@@ -1,0 +1,16 @@
+{
+  "name": "job-radar",
+  "productName": "Job Radar",
+  "version": "1.0.0",
+  "description": "Scans NYC job boards every two weeks for forward deployed, solutions and product roles.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "package": "node build.js"
+  },
+  "devDependencies": {
+    "@electron/packager": "^18.3.6",
+    "electron": "^33.2.1"
+  }
+}

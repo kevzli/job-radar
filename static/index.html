@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Radar</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfbfc; --raise: #ffffff; --ink: #16181d; --muted: #6b7180; --faint: #a1a6b1; --line: #ececf0; --hover: #f4f4f7;
+    --accent: #2f6bff; --good: #12855a; --warn: #a8660b; --bar: rgba(251,251,252,.86);
+    --thumb: rgba(0,0,0,.18); --thumb-hover: rgba(0,0,0,.32);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111215; --raise: #18191d; --ink: #e9eaee; --muted: #9196a1; --faint: #5d626c; --line: #222429; --hover: #1a1c20;
+      --accent: #7ea2ff; --good: #5cc995; --warn: #e3ac5c; --bar: rgba(17,18,21,.86);
+      --thumb: rgba(255,255,255,.14); --thumb-hover: rgba(255,255,255,.26);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+
+  /* ---- top bar: fixed, draggable */
+  .bar { position: fixed; inset: 0 0 auto 0; height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: var(--bar); backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid var(--line); z-index: 10; -webkit-app-region: drag; user-select: none; }
+  .electron .bar { padding-left: 84px; }
+  .bar h1 { font-size: 14px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+  .bar .status { color: var(--faint); font-size: 12.5px; margin-right: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar button, .bar a, .bar input, .bar select { -webkit-app-region: no-drag; }
+  .icon-btn { height: 30px; padding: 0 10px; border-radius: 7px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .icon-btn:hover, .icon-btn.on { background: var(--hover); color: var(--ink); }
+  .icon-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .icon-btn:disabled { opacity: .5; cursor: default; }
+  .spin svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- scroll area with a quiet scrollbar */
+  .scroll { position: fixed; inset: 52px 0 0 0; overflow-y: auto; overscroll-behavior: contain; }
+  .scroll::-webkit-scrollbar { width: 12px; }
+  .scroll::-webkit-scrollbar-track { background: transparent; }
+  .scroll::-webkit-scrollbar-thumb { background: var(--thumb); border-radius: 8px; border: 3px solid transparent; background-clip: content-box; }
+  .scroll::-webkit-scrollbar-thumb:hover { background: var(--thumb-hover); border: 3px solid transparent; background-clip: content-box; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 22px 24px 64px; }
+
+  /* ---- preferences sheet */
+  .prefs { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 18px 28px; padding: 18px 0 22px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  .prefs[hidden] { display: none; }
+  .pref label { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+  .pref label b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pref .hint { font-size: 12px; color: var(--faint); margin-top: 6px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 18px; background: transparent; }
+  input[type=range]::-webkit-slider-runnable-track { height: 3px; border-radius: 3px; background: var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--ink); margin-top: -5.5px; }
+  .checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13px; color: var(--muted); }
+  .checks label { display: inline-flex; gap: 7px; align-items: center; cursor: pointer; }
+  input[type=checkbox] { accent-color: var(--accent); margin: 0; }
+
+  /* ---- summary + filters */
+  .summary { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+  .summary b { color: var(--ink); font-weight: 600; }
+  .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 2px; margin-bottom: 8px; }
+  .tab { padding: 5px 10px; border-radius: 7px; color: var(--muted); font-size: 13px; }
+  .tab:hover { color: var(--ink); }
+  .tab.on { background: var(--hover); color: var(--ink); font-weight: 600; }
+  .filters .sep { width: 1px; height: 16px; background: var(--line); margin: 0 8px; }
+  .filters .grow { flex: 1; }
+  .search { width: 180px; height: 30px; border: 0; background: var(--hover); color: var(--ink); border-radius: 7px; padding: 6px 10px; font: inherit; font-size: 13px; outline: none; }
+  .search::placeholder { color: var(--faint); }
+  select.sort { border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 13px; padding: 5px 4px; outline: none; cursor: pointer; }
+
+  /* ---- job rows */
+  .job { border-top: 1px solid var(--line); }
+  .job:last-child { border-bottom: 1px solid var(--line); }
+  .row { display: grid; grid-template-columns: 40px 1fr auto; gap: 2px 14px; align-items: center; padding: 13px 8px; margin: 0 -8px; border-radius: 8px; cursor: pointer; }
+  .row:hover { background: var(--hover); }
+  .logo { grid-row: span 2; width: 40px; height: 40px; border-radius: 10px; background: var(--mono-bg, var(--hover)); color: var(--mono-fg, var(--muted)); display: grid; place-items: center; font-weight: 650; font-size: 16px; overflow: hidden; position: relative; box-shadow: inset 0 0 0 1px var(--line); }
+  .logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 7px; background: #fff; }
+  .title { font-size: 14.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+  .salary { font-size: 13.5px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .salary.none { color: var(--faint); font-weight: 400; }
+  .meta { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meta i { font-style: normal; color: var(--faint); margin: 0 6px; }
+  .score { text-align: right; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .score b { font-weight: 650; }
+  .score.hi b { color: var(--good); }
+  .score.mid b { color: var(--ink); }
+  .score.lo b { color: var(--warn); }
+  .muted { opacity: .55; }
+
+  .detail { padding: 2px 0 16px 54px; font-size: 13px; color: var(--muted); }
+  .detail[hidden] { display: none; }
+  .facts { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin-bottom: 12px; }
+  .facts dt { color: var(--faint); }
+  .facts dd { margin: 0; color: var(--ink); }
+  .facts .good { color: var(--good); }
+  .facts .warn { color: var(--warn); }
+  .snippet { line-height: 1.55; margin: 0 0 14px; max-width: 70ch; }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .btn { padding: 5px 11px; border-radius: 7px; border: 1px solid var(--line); font-size: 12.5px; color: var(--ink); }
+  .btn:hover { background: var(--hover); }
+  .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .btn.on { border-color: var(--accent); color: var(--accent); }
+  .actions .space { flex: 1; }
+
+  .log { font: 12px/1.55 ui-monospace, Menlo, monospace; color: var(--faint); white-space: pre-wrap; max-height: 120px; overflow: auto; margin-bottom: 16px; }
+  .log[hidden] { display: none; }
+  .empty { text-align: center; color: var(--muted); padding: 64px 16px; }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 16px 16px 48px; }
+    .bar .status { display: none; }
+    .search { width: 120px; }
+    .filters .grow, .filters .sep { display: none; }
+    .facts { grid-template-columns: 90px 1fr; }
+    .detail { padding-left: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <h1>Job Radar</h1>
+  <span class="status" id="scanInfo"></span>
+  <input class="search" type="search" id="q" placeholder="Search">
+  <button class="icon-btn" id="prefsBtn" title="Preferences">
+    <svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Preferences
+  </button>
+  <button class="icon-btn" id="scanBtn" title="Scan now">
+    <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5"/></svg><span>Scan</span>
+  </button>
+</div>
+
+<div class="scroll" id="scroll">
+  <div class="wrap">
+    <div class="prefs" id="prefs" hidden>
+      <div class="pref">
+        <label for="pExp">Experience <b id="vExp"></b></label>
+        <input type="range" id="pExp" min="0" max="12" step="1">
+        <div class="hint" id="hExp"></div>
+      </div>
+      <div class="pref">
+        <label for="pFlex">Flexibility <b id="vFlex"></b></label>
+        <input type="range" id="pFlex" min="0" max="3" step="1">
+      </div>
+      <div class="pref">
+        <label for="pSal">Minimum salary <b id="vSal"></b></label>
+        <input type="range" id="pSal" min="80000" max="300000" step="10000">
+      </div>
+      <div class="pref">
+        <label for="pWlb">Minimum work-life balance <b id="vWlb"></b></label>
+        <input type="range" id="pWlb" min="0" max="80" step="5">
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="pUnstated"> Roles that don't state years</label>
+        <label><input type="checkbox" id="tNoSalary"> Roles without a listed salary</label>
+        <label><input type="checkbox" id="tNearMiss"> Near misses</label>
+        <label><input type="checkbox" id="tClosed"> Closed postings</label>
+      </div>
+    </div>
+
+    <div class="log" id="log" hidden></div>
+    <div class="summary" id="summary"></div>
+
+    <div class="filters">
+      <span id="cats"></span>
+      <span class="sep"></span>
+      <span id="views"></span>
+      <span class="grow"></span>
+      <select class="sort" id="sort" title="Sort">
+        <option value="score">Best match</option>
+        <option value="fit_score">Resume fit</option>
+        <option value="wlb_score">Work-life balance</option>
+        <option value="salary">Salary</option>
+        <option value="first_seen">Newest</option>
+      </select>
+    </div>
+
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+if (navigator.userAgent.includes("Electron")) document.documentElement.classList.add("electron");
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const SRC = { linkedin: "LinkedIn", builtin: "Built In", greenhouse: "Company site", lever: "Company site", ashby: "Company site", workday: "Company site", indeed: "Indeed", jsearch: "Job board" };
+const CATS = [["All", "All"], ["Forward Deployed", "Forward deployed"], ["Solutions Engineering", "Solutions"], ["Product Management", "Product"]];
+const VIEWS = [["active", "Inbox"], ["saved", "Saved"], ["applied", "Applied"], ["hidden", "Hidden"]];
+
+const pref = (k, d) => { try { const v = localStorage.getItem("jr." + k); return v === null ? d : JSON.parse(v); } catch { return d; } };
+const setPref = (k, v) => { try { localStorage.setItem("jr." + k, JSON.stringify(v)); } catch {} };
+
+let state = { jobs: [], cat: pref("cat", "All"), view: "active", q: "", sort: pref("sort", "score"), open: null };
+let latestStarted = null, wasRunning = false;
+
+const money = (lo, hi) => {
+  if (!lo) return null;
+  const k = (v) => "$" + Math.round(v / 1000) + "K";
+  return !hi || hi === lo ? k(lo) : `${k(lo)}–${k(hi)}`;
+};
+const daysAgo = (d) => {
+  if (!d) return "";
+  const n = Math.round((Date.now() - new Date(d + (d.length === 10 ? "T12:00:00" : ""))) / 864e5);
+  return n <= 0 ? "today" : n === 1 ? "yesterday" : n < 60 ? n + " days ago" : Math.round(n / 30) + " months ago";
+};
+const years = (j) => j.years_required == null ? null
+  : j.years_max != null && j.years_max !== j.years_required ? `${j.years_required}–${j.years_max} yrs` : `${j.years_required}+ yrs`;
+const HUES = [210, 160, 260, 20, 330, 190, 45, 290];
+const hue = (name) => HUES[[...name].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7) % HUES.length];
+const logo = (name) => `<div class="logo" style="--mono-bg:hsl(${hue(name)} 45% 50% / .16);--mono-fg:hsl(${hue(name)} 55% 60%)">${esc(name.trim()[0] || "?")}` +
+  `<img src="/api/logo?name=${encodeURIComponent(name)}" alt="" loading="lazy" onerror="this.remove()"></div>`;
+const isNew = (j) => latestStarted && j.first_seen >= latestStarted;
+
+function tabs(el, items, cur, onPick) {
+  el.innerHTML = items.map(([v, l]) => `<button class="tab ${v === cur ? "on" : ""}" data-v="${esc(v)}">${esc(l)}</button>`).join("");
+  el.onclick = (e) => { const b = e.target.closest("button"); if (b) onPick(b.dataset.v); };
+}
+
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  const noSal = $("tNoSalary").checked, near = $("tNearMiss").checked, closed = $("tClosed").checked;
+  const js = state.jobs.filter((j) => {
+    if (state.view === "active" ? (j.status === "hidden" || j.status === "applied") : j.status !== state.view) return false;
+    if (state.cat !== "All" && j.category !== state.cat) return false;
+    if (!closed && j.closed) return false;
+    if (!j.passes) {
+      const onlyMissingSalary = j.flags.includes("no-salary") && !j.flags.some((f) => f === "too-senior" || f === "too-junior" || f === "size-unknown") && (j.employees || 0) >= 1000;
+      if (!(near || (noSal && onlyMissingSalary))) return false;
+    }
+    if (q && !(j.title + " " + j.company + " " + j.snippet).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const key = state.sort;
+  const val = (j) => key === "salary" ? ((j.salary_min || 0) + (j.salary_max || j.salary_min || 0)) / 2 : key === "first_seen" ? j.first_seen : j[key];
+  return js.sort((a, b) => (val(b) > val(a) ? 1 : val(b) < val(a) ? -1 : b.score - a.score));
+}
+
+function detail(j) {
+  const wlbNotes = j.reasons.filter((r) => r.startsWith("WLB perks") || r.startsWith("Watch out") || r.startsWith("Travel"));
+  const match = j.reasons.find((r) => r.startsWith("Matches your background"));
+  const facts = [
+    ["Experience", years(j) ? `Asks for ${years(j)}` : "Not stated", j.flags.includes("too-senior") || j.flags.includes("too-junior") ? "warn" : ""],
+    ["Fit", `${j.fit_score}/100${match ? " · " + match.replace("Matches your background: ", "") : ""}`, ""],
+    ["Work-life", `${j.wlb_score}/100${j.wlb_rating ? ` · employer ~${j.wlb_rating.toFixed(1)}/5` : ""}${wlbNotes.length ? " · " + wlbNotes.join(" · ") : ""}`, j.flags.includes("wlb-warning") || j.flags.includes("travel") ? "warn" : j.wlb_score >= 65 ? "good" : ""],
+    ["Company", `${j.employees ? Number(j.employees).toLocaleString() + " employees" : "Size unknown"}${j.workplace ? " · " + j.workplace : ""}`, ""],
+    ["Posted", j.posted_at ? daysAgo(j.posted_at) : "Unknown", ""],
+  ];
+  const links = Object.entries(j.urls).map(([s, u], i) => `<a class="btn ${i === 0 ? "primary" : ""}" href="${esc(u)}" target="_blank" rel="noopener">${esc(SRC[s] || s)} ↗</a>`).join("");
+  const st = (s, label) => `<button class="btn ${j.status === s ? "on" : ""}" data-s="${s}">${label}</button>`;
+  return `<dl class="facts">${facts.map(([k, v, c]) => `<dt>${k}</dt><dd class="${c}">${esc(v)}</dd>`).join("")}</dl>
+    ${j.snippet ? `<p class="snippet">${esc(j.snippet)}…</p>` : ""}
+    <div class="actions" data-key="${esc(j.key)}">${links}<span class="space"></span>${st("saved", "Save")}${st("applied", "Applied")}${st("hidden", "Hide")}</div>`;
+}
+
+function render() {
+  tabs($("cats"), CATS, state.cat, (v) => { state.cat = v; setPref("cat", v); render(); });
+  tabs($("views"), VIEWS, state.view, (v) => { state.view = v; render(); });
+
+  const live = state.jobs.filter((j) => j.passes && !j.closed && j.status !== "hidden");
+  const mids = live.filter((j) => j.salary_min).map((j) => (j.salary_min + (j.salary_max || j.salary_min)) / 2).sort((a, b) => a - b);
+  const nNew = live.filter(isNew).length;
+  $("summary").innerHTML = live.length
+    ? `<b>${live.length}</b> roles at <b>${new Set(live.map((j) => j.company)).size}</b> companies` +
+      (mids.length ? ` · median <b>$${Math.round(mids[Math.floor(mids.length / 2)] / 1000)}K</b>` : "") +
+      (nNew ? ` · <b>${nNew}</b> new` : "")
+    : "";
+
+  const js = filtered();
+  if (!js.length) {
+    $("list").innerHTML = `<div class="empty">${state.jobs.length ? "Nothing matches these filters." : "No jobs yet. Click <b>Scan</b> to run the first scan (about 10 minutes)."}</div>`;
+    return;
+  }
+  $("list").innerHTML = js.map((j) => {
+    const sal = money(j.salary_min, j.salary_max);
+    const meta = [j.company, years(j), j.workplace].filter(Boolean).map(esc).join("<i>·</i>");
+    return `<div class="job ${j.closed || !j.passes ? "muted" : ""}" data-key="${esc(j.key)}">
+      <div class="row">
+        ${logo(j.company)}
+        <div class="title">${isNew(j) ? '<span class="dot" title="New"></span>' : ""}<span>${esc(j.title)}</span></div>
+        <div class="salary ${sal ? "" : "none"}">${sal || "No salary listed"}</div>
+        <div class="meta">${meta}</div>
+        <div class="score ${j.score >= 60 ? "hi" : j.score >= 48 ? "mid" : "lo"}" title="Overall match: 45% fit, 35% work-life balance, 20% salary"><b>${j.score}</b> match</div>
+      </div>
+      <div class="detail" ${state.open === j.key ? "" : "hidden"}>${state.open === j.key ? detail(j) : ""}</div>
+    </div>`;
+  }).join("");
+}
+
+$("list").addEventListener("click", async (e) => {
+  const b = e.target.closest(".actions button");
+  if (b) {
+    const key = b.parentElement.dataset.key;
+    const job = state.jobs.find((j) => j.key === key);
+    job.status = job.status === b.dataset.s ? "new" : b.dataset.s;
+    render();
+    await fetch("/api/job-status", { method: "POST", body: JSON.stringify({ key, status: job.status }) });
+    return;
+  }
+  if (e.target.closest("a")) return;
+  const row = e.target.closest(".row");
+  if (!row) return;
+  const key = row.parentElement.dataset.key;
+  state.open = state.open === key ? null : key;
+  render();
+});
+
+async function loadJobs() {
+  state.jobs = (await (await fetch("/api/jobs")).json()).jobs;
+  render();
+}
+
+// ---- preferences
+const PREF_FIELDS = { pExp: "experience_years", pFlex: "experience_flex", pSal: "min_salary", pWlb: "min_wlb_score" };
+let prefs = null, prefTimer = null;
+function showPrefs() {
+  const e = prefs.experience_years, f = prefs.experience_flex;
+  $("vExp").textContent = e === 1 ? "1 year" : e + " years";
+  $("vFlex").textContent = f ? "± " + f : "exact";
+  $("vSal").textContent = "$" + Math.round(prefs.min_salary / 1000) + "K";
+  $("vWlb").textContent = prefs.min_wlb_score;
+  $("hExp").textContent = `Roles asking ${Math.max(0, e - f)}–${e + f} years`;
+}
+function loadPrefs(cfg) {
+  prefs = cfg;
+  for (const [id, k] of Object.entries(PREF_FIELDS)) $(id).value = cfg[k];
+  $("pUnstated").checked = cfg.include_unstated_years;
+  showPrefs();
+}
+function prefChanged() {
+  for (const [id, k] of Object.entries(PREF_FIELDS)) prefs[k] = Number($(id).value);
+  prefs.include_unstated_years = $("pUnstated").checked;
+  showPrefs();
+  clearTimeout(prefTimer);
+  prefTimer = setTimeout(async () => {
+    const r = await (await fetch("/api/preferences", { method: "POST", body: JSON.stringify(prefs) })).json();
+    state.jobs = r.jobs;
+    render();
+  }, 250);
+}
+for (const id of [...Object.keys(PREF_FIELDS), "pUnstated"]) $(id).addEventListener("input", prefChanged);
+for (const id of ["tNoSalary", "tNearMiss", "tClosed"]) {
+  $(id).checked = pref(id, false);
+  $(id).onchange = () => { setPref(id, $(id).checked); render(); };
+}
+const setPrefsOpen = (open) => { $("prefs").hidden = !open; $("prefsBtn").classList.toggle("on", open); setPref("prefsOpen", open); };
+$("prefsBtn").onclick = () => setPrefsOpen($("prefs").hidden);
+setPrefsOpen(pref("prefsOpen", false));
+
+// ---- scan status
+async function poll() {
+  const s = await (await fetch("/api/status")).json();
+  const last = s.last_scan;
+  latestStarted = last ? last.started : null;
+  if (!prefs) loadPrefs(s.config);
+  const fmt = (d) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  $("scanInfo").textContent = s.running ? "Scanning job boards…" : last ? `Updated ${fmt(last.finished)} · next scan ${fmt(s.next_due)}` : "Not scanned yet";
+  $("scanBtn").disabled = s.running;
+  $("scanBtn").classList.toggle("spin", s.running);
+  $("log").hidden = !s.running;
+  $("log").textContent = s.progress.slice(-6).join("\n");
+  if (wasRunning && !s.running) loadJobs();
+  wasRunning = s.running;
+  setTimeout(poll, s.running ? 2000 : 30000);
+}
+
+$("scanBtn").onclick = async () => { await fetch("/api/scan", { method: "POST" }); wasRunning = true; poll(); };
+$("q").oninput = (e) => { state.q = e.target.value; render(); };
+$("sort").value = state.sort;
+$("sort").onchange = (e) => { state.sort = e.target.value; setPref("sort", state.sort); render(); };
+poll().then(loadJobs);
+</script>
+</body>
+</html>

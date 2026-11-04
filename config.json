@@ -1,0 +1,51 @@
+{
+  "min_salary": 120000,
+  "salary_basis": "midpoint",
+  "include_no_salary": false,
+  "min_employees": 1000,
+  "include_unknown_size": false,
+  "scan_every_days": 14,
+  "lookback_days": 21,
+  "experience_years": 3,
+  "experience_flex": 1,
+  "include_unstated_years": true,
+  "min_wlb_score": 45,
+
+  "role_patterns": {
+    "Forward Deployed": ["forward[- ]deployed", "deployment strategist", "deployed engineer", "applied ai engineer", "ai deployment"],
+    "Solutions Engineering": ["solutions? engineer", "solutions? architect", "solutions? consultant", "sales engineer", "customer engineer", "implementation engineer", "integration engineer", "technical solutions", "solutions engineering", "deployment engineer", "client solutions"],
+    "Product Management": ["product manager", "product owner", "product management"]
+  },
+  "exclude_title_patterns": ["\\bintern\\b", "internship", "\\bdirector\\b", "\\bvp\\b", "vice president", "head of", "\\bprincipal\\b", "\\bstaff\\b", "group product manager", "senior manager", "\\bmanager,", "manager of", "\\bcontract\\b", "\\bcontractor\\b", "\\bpart[- ]time\\b", "\\bfederal\\b", "public sector", "\\bgovernment\\b", "\\bdefense\\b", "\\bleader\\b"],
+  "senior_title_patterns": ["\\bsenior\\b", "\\bsr\\.?\\b", "\\blead\\b", "\\bIII\\b"],
+
+  "linkedin_queries": ["forward deployed engineer", "deployment strategist", "solutions engineer", "solutions architect", "sales engineer", "implementation engineer", "customer engineer", "solutions consultant", "product manager", "technical product manager", "associate product manager"],
+  "linkedin_pages_per_query": 3,
+  "builtin_queries": ["forward deployed", "solutions engineer", "solutions architect", "sales engineer", "implementation engineer", "product manager"],
+  "builtin_pages_per_query": 3,
+  "jsearch_queries": ["solutions engineer", "forward deployed engineer", "product manager", "sales engineer"],
+  "workday_search_terms": ["solutions engineer", "solutions architect", "product manager", "forward deployed", "implementation"],
+
+  "resume_keywords": {
+    "api": 2, "apis": 2, "sdk": 2, "integration": 2, "integrations": 2, "saas": 2, "enterprise": 1, "customer-facing": 2, "client-facing": 2,
+    "implementation": 2, "onboarding": 1, "cloud": 1, "workflow": 1, "automation": 1,
+    "sql": 2, "python": 2, "javascript": 1, "typescript": 1,
+    "ai": 1, "llm": 2, "machine learning": 1,
+    "technical discovery": 2, "demo": 1, "proof of concept": 2, "stakeholder": 1, "documentation": 1
+  },
+
+  "wlb_positive": ["work-life balance", "work life balance", "flexible hours", "flexible schedule", "flexible work", "hybrid", "unlimited pto", "unlimited vacation", "generous pto", "paid parental leave", "wellness", "sabbatical", "recharge", "mental health", "4-day", "summer fridays", "company-wide shutdown", "no-meeting"],
+  "wlb_negative": ["fast-paced", "fast paced", "high-intensity", "high intensity", "intense", "hustle", "grind", "long hours", "work hard", "weekends", "on-call", "on call", "in-office 5 days", "five days a week", "5 days a week", "in office 5", "relentless", "hardcore", "extremely high bar", "travel up to 50", "travel up to 75", "50% travel", "75% travel", "extensive travel", "significant travel"],
+
+  "email": {
+    "enabled": false,
+    "to": "",
+    "from": "",
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 465,
+    "smtp_user": "",
+    "smtp_password_env": "JOBRADAR_SMTP_PASSWORD"
+  },
+  "jsearch_api_key_env": "JSEARCH_API_KEY",
+  "server_port": 8787
+}
